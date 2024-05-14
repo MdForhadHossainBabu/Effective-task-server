@@ -11,7 +11,7 @@ app.use(express.json());
 // console.log(process.env.DB_USER);
 
 const uri =
-  'mongodb+srv://AssignmentProject:bhOgRL48kNODxzj8@cluster0.tekyyoa.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+  'mongodb+srv://:@cluster0.tekyyoa.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -24,7 +24,33 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const createCollection = client.db('createAssignment').collection('create');
+    // const featureCollection = client.db('createAssignment').collection(features);
 
+    
+//     app.get('/features', async (req, res) => {
+//   const
+// })
+
+
+
+    
+    
+   
+    app.patch('/create-assignment/:id', async (req, res) => {
+      const id = req.params.id;
+      const status = req.body;
+      console.log(status);
+      const query = { _id: new ObjectId(id) };
+      const updateDoc= {
+        $set: {
+          status
+        }
+      }
+      const result = await createCollection.updateOne(query, updateDoc);
+      res.send(result)
+
+    })
+    
     // create assignment part post now
     app.post('/create-assignment', async (req, res) => {
       const create = req.body;
@@ -50,6 +76,7 @@ async function run() {
       console.log(updateLoc);
       const updateDoc = {
         $set: {
+          name:updateLoc.name,
           label: updateLoc.label,
           mark: updateLoc.mark,
           photo: updateLoc.photo,
