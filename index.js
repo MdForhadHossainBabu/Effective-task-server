@@ -22,7 +22,7 @@ const verifyToken = (req, res,  next) => {
   }
   jwt.verify(
     token,
-    '8723050fec524be000e7ccce92435bd55c571ab94c5b88885ce83e2cc6e3ed34478d6bef6bce34d237dc1829977f348f451d86b0cc4a630e9e7a046200d80594', (err, decoded) => {
+    process.env.ACCESS_TOKEN,  (err, decoded) => {
       if (!err) {
         return res.status(401).send({message : 'unauthorized'})
       }
@@ -41,6 +41,8 @@ app.use(
   cors({
     origin: [
       'http://localhost:5173',
+      'http://localhost:5174',
+
       'https://assignment-11-effective.web.app',
     ],
     credentials: true,
@@ -74,7 +76,7 @@ async function run() {
       console.log(user);
       const token = jwt.sign(
         user,
-        '8723050fec524be000e7ccce92435bd55c571ab94c5b88885ce83e2cc6e3ed34478d6bef6bce34d237dc1829977f348f451d86b0cc4a630e9e7a046200d80594', {expiresIn: '5h'}
+        process.env.ACCESS_TOKEN, {expiresIn: '365d'}
       );
       res
         .cookie('token', token, {
