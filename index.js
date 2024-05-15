@@ -1,17 +1,55 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const app = express();
+require('dotenv').config();
 const port = process.env.PORT || 5000;
 
+// self middleware 
+const logger = async (req, res, next) => {
+  console.log('called', req.host, req.originalUrl);
+  next();
+}
+
+// verify token 
+const verifyToken = (req, res,  next) => {
+  const token = req.cookies?.token;
+  console.log('value of token in ', token);
+  if (token) {
+    return res.status(401).send({message: 'Unauthorized'})
+  }
+  jwt.verify(
+    token,
+    '8723050fec524be000e7ccce92435bd55c571ab94c5b88885ce83e2cc6e3ed34478d6bef6bce34d237dc1829977f348f451d86b0cc4a630e9e7a046200d80594', (err, decoded) => {
+      if (!err) {
+        return res.status(401).send({message : 'unauthorized'})
+      }
+      console.log('value in the token', decoded);
+      req.user = decoded;
+  next()
+    }
+  );
+
+}
+
+
 // middleware
-app.use(cors());
+//Must remove "/" from your production URL
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      'https://assignment-11-effective.web.app',
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use(cookieParser())
 
-// console.log(process.env.DB_USER);
-
-const uri =
-  'mongodb+srv://:@cluster0.tekyyoa.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tekyyoa.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -23,20 +61,47 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    // access all task 
     const createCollection = client.db('createAssignment').collection('create');
-    // const featureCollection = client.db('createAssignment').collection(features);
+    const featureCollection = client
+      .db('createAssignment')
+      .collection('features');
 
     
-//     app.get('/features', async (req, res) => {
-//   const
-// })
+    // json web token generate
+    app.post('/jwt', logger,  verifyToken, async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(
+        user,
+        '8723050fec524be000e7ccce92435bd55c571ab94c5b88885ce83e2cc6e3ed34478d6bef6bce34d237dc1829977f348f451d86b0cc4a630e9e7a046200d80594', {expiresIn: '5h'}
+      );
+      res
+        .cookie('token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+        })
+        .send({ success: true });
+})
 
+    // get all features
+    app.get('/features',  async (req, res, ) => {
+      const result = await featureCollection.find().toArray()
+      res.send(result)
+    })
 
-
+    app.get('/features/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      console.log('from valid token ', req.user);
+      const query = { _id: new ObjectId(id) };
+      const result = await featureCollection.findOne(query);
+      res.send(result);
+    });
     
     
    
-    app.patch('/create-assignment/:id', async (req, res) => {
+    app.patch('/create-assignment/:id',  async (req, res) => {
       const id = req.params.id;
       const status = req.body;
       console.log(status);
@@ -52,7 +117,7 @@ async function run() {
     })
     
     // create assignment part post now
-    app.post('/create-assignment', async (req, res) => {
+    app.post('/create-assignment',  async (req, res) => {
       const create = req.body;
       console.log(create);
       const result = await createCollection.insertOne(create);
